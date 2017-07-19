@@ -8,7 +8,7 @@ A: Constraint Propagation uses an interative application of a set of constrainin
 Naked Twins is a strategy to quickly reduce the necessary number of iterations of Constraint Progapagation leveraging the power of twin valued boxes during the last stage of problem solving for a neighborhood of values. 
 
 We identify a pair of boxes in the same neighborhood that hold identical values of length 2, and eliminate those from all neighboring peer-boxes.
-<img src='./images/nakedtwins.PNG'>
+<img src='./images/naked-twins.png'>
 
 The Code implementation first created a list of lists containing the boxes at which a duplicate set of values with length 2 was found, iterated over them to identify their common neighboring boxes and removed the duplicated values from all of them. Key to a successfull solution proved to be the efficient creation of a joint set of peers as illustrated below.
 
