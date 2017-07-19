@@ -18,7 +18,9 @@ The Code implementation first created a list of lists containing the boxes at wh
 
 Naked_twins was used together with two other constraint strategies (only_choice) and (eliminate) to reach the solution.
 
-<img src='./images/code/eliminate.PNG'>
+
+<img src='./images/code_eliminate.PNG'>
+
 
 To solve complicated Sudoku Grids, an iterative 'depth first search' routine was used to create a recursive procedure to branch out of stagnant states of local minima in the constraint propagation logic. For efficiency, a stagnant state was broken at the square with the min number of possible values for branch creation. Each possible value was tried and solved using constraint propagation until a finishing state was reached. 
 
@@ -37,7 +39,7 @@ First they needed to be represented as boxes.
 
 Then they where added to the overall unit representation.
 
-<img src='./images/addDiag.png'>
+<img src='./images/code_addDiag.PNG'>
 
 
 ### Install
