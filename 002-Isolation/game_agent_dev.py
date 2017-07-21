@@ -11,36 +11,13 @@ class SearchTimeout(Exception):
 
 
 def custom_score(game, player):
-    """The best implementation
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
 
+    This should be the best heuristic function for your project submission.
 
-
-    Parameters
-    ----------
-    game : `isolation.Board`
-        An instance of `isolation.Board` encoding the current state of the
-        game (e.g., player locations and blocked cells).
-
-    player : object
-        A player instance in the current game (i.e., an object corresponding to
-        one of the player objects `game.__player_1__` or `game.__player_2__`.)
-
-    Returns
-    -------
-    float
-        The heuristic value of the current game state to the specified player.
-    """
-    return custom_score_2(game, player)
-
-
-def custom_score_2(game, player):
-    """Implements a proportional of the moves available to the player 
-    given the overall number of possible moves. 
-    
-    Goal:
-    => Maximize steps that maximize the possible difference in abbility
-    to move while minimizing the opponents possibilities, while keeping
-    as close as possible to the central positions
+    Note: this function should be called from within a Player instance as
+    `self.score()` -- you should not need to call this function directly.
 
     Parameters
     ----------
@@ -57,21 +34,10 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Check if game is won or lost 
-    if game.is_winner(player) or game.is_loser(player):
-        return game.utility(player) 
+    return custom_score2(game, player, 1)
+    # score =  self.heuristic_centrality(game, player)
 
-    # Maximize the centrality
-    centrality = centrality(game, player)
-    # Maximize owns proportion of available moves
-    prop_moves = float(numberMoves(game, player) / openMoves)
-    
-    # Calculate a weighted combination of prop moves and centrality
-    score = float(prop_moves + centrality)
-    print(score)
-    return score
-
-def custom_score_3(game, player):
+def custom_score2(game, player, opCloseness=1):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -93,54 +59,49 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    if game.is_loser() or game.is_winner():
+    # Check if game is already won or lost at this stage
+    if game.is_winner(player) or game.is_loser:
         return game.utility(player)
 
-    return centrality(game, player)
+    # If not yet closed, evaluate the possible moves for the opponents
+    myMoves = len(game.get_legal_moves(player))
+    opMoves = len(game.get_legal_moves(game.get_opponent(player)))
+    # Return the difference weighted by the amount of aggressiveness we want to apply
+    score =  float(myMoves - opCloseness * opMoves )
+    print(score)
+    return score
+
+
+
+
+def heuristic_centrality(game, player):
+    """Calculate the distance the next possible move takes the player away from the 
+    Center of the board
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    -------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+    # Check if game is already won or lost at this stage
+    if game.is_winner(player) or game.is_loser:
+        return game.utility(player)
+
+    # Retrieve the current location for the player
+    r,c = game.get_player_location(player)
+    # Calculate the distance to the center square (3,3)
+    return sum(abs(r-3), abs(c-3))
     
-
-# Different Scoring Mechanisms
-def openMoves(game, player):
-    """
-    Basic evaluation function counting the number of available moves for the 
-    player on the board
-        """
-
-    return float(len(game.get_legal_moves(player)))
-    
-
-def centrality(game, player, closeness=10):
-    """
-    Calculates the difference in centrality a given move will result in
-    """
-    
-    # Calculate the positions
-    center_x, center_y = int(game.height/2), int(game.widht/2)
-    player_x, player_y = game.get_player_location(player)
-    opponent_x, opponent_y = game.get_player_location(game.get_opponent(player))
-
-    # Calculate Distance
-    player_dist = abs(player_x - center_x) + abs(player_y - center_y)
-    opponent_dist = abs(opponent_x - center_x) + abs(opponent_y - center_y)
-
-    return float(player_dist - opponent_dist*closeness)
-
-def numberMoves(game, player, closeness=1):
-    """
-    A weighted difference function evaluating the difference in available number of moves for both
-    players given the current state of the game.
-    """
-    # Calculate the available moves to both parties
-    numMyMoves = len(game.get_legal_moves())
-    numOpMoves = len(game.get_legal_moves(game.get_opponent(player)))
-
-    # return a weighted difference based on the amount of closeness we want to introduce
-    return float(numMyMoves - closeness * numOpMoves)
-
-def propMoves(game, player):
-    """
-    Calculates a weighted
-    """
 
 
 class IsolationPlayer:
@@ -178,7 +139,7 @@ class MinimaxPlayer(IsolationPlayer):
     minimax to return a good move before the search time limit expires.
     """
 
-    def get_move(self, game, time_left):
+    def get_move(self, game, time_left, iterativeDeepening=False):
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
 
@@ -212,18 +173,32 @@ class MinimaxPlayer(IsolationPlayer):
         # in case the search fails due to timeout
         best_move = (-1, -1)
 
+        # Check if we have moves left
+        if not game.get_legal_moves():
+            return (-1,-1)
+
+        # Use iterative deepening / normal minmax to search the best move
         try:
-            # The try/except block will automatically catch the exception
-            # raised when the timer is about to expire.
-            best_move = self.minimax(game, self.search_depth)
+            if iterativeDeepening:
+                iterative_depth = 1
+                while True:
+                    best_score, best_move = self.minimax(game, iterative_depth)
+                    if best_score == float("inf") or best_score == float("-inf"):
+                        break
+                    iterative_depth += 1
+                return best_move
+            else:
+                _, best_move = self.minimax(game, self.search_depth)
 
         except SearchTimeout:
+
             pass  # Handle any actions required after timeout as needed
 
         # Return the best move from the last completed search iteration
+        
         return best_move
 
-    def minimax(self, game, depth, maxplayer=True):
+    def minimax(self, game, depth, maxPlayer=True):
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
 
@@ -265,68 +240,84 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # Get the legal moves
+
+        # Check for all available moves
         legal_moves = game.get_legal_moves()
+        print(legal_moves)
 
-        # Check if we still have moves available
+        # Check if there are still moves available
         if not legal_moves:
-            if maxplayer:
-                return (-1,-1)
-            else:
-                return (-1,-1)
+           if maxPlayer:
+               return float("-inf")
+           else:
+               return float("inf")
 
-
-        # Initialize the values
-        best_move = (-1,-1)
+        # If there are moves available initialize the search for best action
         min_score, max_score = float("inf"), float("-inf")
+        best_move = (-1, -1)
 
+        # If we reached the last iteration of search
 
-        # Check if we reached max_iterative depth
         if depth == 1:
-            # Iterate over all possibilities
-            if maxplayer:
+            print('Entering the last Evaluation Step at depth {}'.format(depth))
+            print(legal_moves)
+
+            # Implement strategy to maximize Utility
+            if maxPlayer:
+                print("i am playing as maximiging player {}".format(maxPlayer))
                 for move in legal_moves:
-                    # score the move
+                    # Create a deep copy of the board with the move applied, and score it
                     score = self.score(game.forecast_move(move), self)
-                    # Check if better move has been found
+                    if score == float('inf'):
+                        return score, move
+                    # If the current move is better than the best we saw so far, store it
                     if score > max_score:
                         max_score, best_move = score, move
-                return best_move
-
+                print(best_move)
+                return max_score, best_move
+            
+            # We are simulating opponents move (Trying to minimize the resulting Utility)
             else:
+                # Iterate over all possible legal moves for the given state
                 for move in legal_moves:
-                    # Score the move
+                    # Create a deep copy of the board with the move applied, and score it
                     score = self.score(game.forecast_move(move), self)
-                    # Check if better move has been found
+                    if score == float("-inf"):
+                        return score, move
+                    # If the move is less than the current min_score keep it
                     if score < min_score:
                         min_score, best_move = score, move
-                return best_move
+                print(best_move)
+                return min_score, best_move 
 
-        # Else keep going
-        if maxplayer:
+
+        # We have not yet reached our final search depth -> Search all available moves from the 
+        # Current State
+        if maxPlayer:
             for move in legal_moves:
-                score,_ = self.minimax(game.forecast_move(move), depth-1, maxplayer=False)
-
-                if score == float("inf"):
-                    # We found a winning branch
+                # For each possible move we search the 
+                print("Playing maximing Player at depth {}".format(depth))
+                score,_ = self.minimax(game.forecast_move(move), depth-1, maxPlayer=False)
+                # Check if we found a winner
+                if score == float('inf'):
                     return score, move
-                # Check if this one is an improvement
+                # Else check if it is the best option so far
                 if score > max_score:
                     max_score, best_move = score, move
-            return  best_move
-        
-        else:
-            for move in legal_moves:
-                score,_ = self.minimax(game.forecast_move(move), depth-1, maxplayer=True)
+            return max_score, best_move
 
+        else:
+            # We iterate over the all possible moves as the opponent
+            for move in legal_moves:
+                print("Playing minimizing Player at depth {}".format(depth))
+                score,_ = self.minimax(game.forecast_move(move), depth-1, maxPlayer=True)
                 if score == float("-inf"):
-                    # We found a surely loosing branch!
-                    return score, move
-                # Check if its a negative improvement
+                    return move
                 if score < min_score:
                     min_score, best_move = score, move
-            return  best_move
-            
+            return min_score, best_move
+
+
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
@@ -366,13 +357,8 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        legal_moves = game.get_legal_moves()
-
-        if not legal_moves:
-            return (-1,-1)
-        return legal_moves[0]
-             
-        
+        # TODO: finish this function!
+        return 
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -427,3 +413,40 @@ class AlphaBetaPlayer(IsolationPlayer):
 
 
 
+
+from isolation import Board
+from sample_players import GreedyPlayer
+from sample_players import RandomPlayer
+
+# create an isolation board (by default 7x7)
+player1 = MinimaxPlayer()
+player2 = RandomPlayer()
+game = Board(player1, player2)
+
+# place player 1 on the board at row 2, column 3, then place player 2 on
+# the board at row 0, column 5; display the resulting board state.  Note
+# that the .apply_move() method changes the calling object in-place.
+game.apply_move((2, 3))
+game.apply_move((0, 5))
+print(game.to_string())
+
+# players take turns moving on the board, so player1 should be next to move
+assert(player1 == game.active_player)
+
+# get a list of the legal moves available to the active player
+print(game.get_legal_moves())
+
+# get a successor of the current state by making a copy of the board and
+# applying a move. Notice that this does NOT change the calling object
+# (unlike .apply_move()).
+new_game = game.forecast_move((1, 1))
+assert(new_game.to_string() != game.to_string())
+print("\nOld state:\n{}".format(game.to_string()))
+print("\nNew state:\n{}".format(new_game.to_string()))
+
+# play the remainder of the game automatically -- outcome can be "illegal
+# move", "timeout", or "forfeit"
+winner, history, outcome = game.play()
+print("\nWinner: {}\nOutcome: {}".format(winner, outcome))
+print(game.to_string())
+print("Move history:\n{!s}".format(history))
